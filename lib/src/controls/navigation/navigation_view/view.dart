@@ -335,6 +335,14 @@ class NavigationViewState extends State<NavigationView> {
         _compactOverlayOpen,
         identifier: 'compactOverlayOpen',
       );
+      // FlyNarwhal patch: the open/compact pane branches use distinct keys,
+      // so toggling inflates a fresh AnimatedContainer instead of retaking
+      // the shared one — no width animation runs and its onEnd (which resets
+      // _isTransitioning) never fires. Pane items refuse taps while
+      // isTransitioning is true, so release the gate on the next frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _animationEndCallback();
+      });
       return;
     }
     _compactOverlayOpen = false;
