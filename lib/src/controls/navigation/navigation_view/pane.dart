@@ -1047,12 +1047,9 @@ class _CompactNavigationPane extends StatelessWidget {
     final showReplacement =
         pane.autoSuggestBox != null && pane.autoSuggestBoxReplacement != null;
 
+    // No key shared with the open pane here: keyless inflates a fresh subtree
+    // per position instead of retaking the keyed element mid-layout (crash).
     return AnimatedContainer(
-      // FlyNarwhal patch: upstream shares this GlobalKey with the open pane
-      // to animate the width between compact/open. Retaking the keyed element
-      // across those positions during the body LayoutBuilder's in-layout
-      // rebuild recursively activates OverlayPortals and attaches to the
-      // overlay theater mid-layout -> assertion crash. Fresh inflate instead.
       duration: theme.animationDuration ?? Duration.zero,
       curve: theme.animationCurve ?? Curves.linear,
       width: pane.size?.compactWidth ?? kCompactNavigationPaneWidth,
@@ -1121,7 +1118,6 @@ class _OpenNavigationPane extends StatefulWidget {
     this.onItemSelected,
     this.initiallyOpen = false,
     this.onAnimationEnd,
-    this.usePanelKey = true,
   }) : super(key: pane.key);
 
   final NavigationPane pane;
@@ -1129,16 +1125,6 @@ class _OpenNavigationPane extends StatefulWidget {
   final NavigationPaneThemeData theme;
   final bool initiallyOpen;
   final VoidCallback? onAnimationEnd;
-
-  /// Whether to use the shared [NavigationViewState._panelKey] for the
-  /// internal [AnimatedContainer].
-  ///
-  /// When `true` (the default), the [AnimatedContainer]'s state is shared
-  /// across compact and expanded modes, enabling the smooth width animation
-  /// between them. Set to `false` in minimal mode to prevent the
-  /// [AnimatedContainer] state from being reused when transitioning to compact
-  /// mode, which would otherwise cause a spurious width animation.
-  final bool usePanelKey;
 
   @override
   State<_OpenNavigationPane> createState() => _OpenNavigationPaneState();
@@ -1174,9 +1160,6 @@ class _OpenNavigationPaneState extends State<_OpenNavigationPane> {
     }
 
     return AnimatedContainer(
-      // FlyNarwhal patch: see the compact pane AnimatedContainer above —
-      // shared-key reuse across compact/open positions crashes mid-layout.
-      key: null,
       duration: theme.animationDuration ?? Duration.zero,
       curve: theme.animationCurve ?? Curves.linear,
       width: paneWidth,

@@ -269,14 +269,8 @@ class NavigationViewState extends State<NavigationView> {
   final _secondaryListKey = GlobalKey();
   final _selectedItemKey = GlobalKey();
   final _contentKey = GlobalKey();
-  // FlyNarwhal patch: upstream reuses a single GlobalKey across the compact
-  // view's open/compact branches, the stack overlay branches and the minimal
-  // pane. Swapping between those positions while the body LayoutBuilder
-  // rebuilds its child during layout retakes the key'd element, recursively
-  // activates OverlayPortals and attaches render objects to the overlay
-  // theater mid-layout -> "_RenderLayoutBuilder was mutated" /
-  // "_elements.contains(element)" assertions and a ~100k-px RenderFlex
-  // overflow. One key per position keeps swaps deactivate+inflate instead.
+  // One overlay host key per pane position: sharing a single key and retaking
+  // it while the body rebuilds during layout crashes.
   final _columnOverlayOpenKey = GlobalKey();
   final _columnOverlayCompactKey = GlobalKey();
   final _stackOverlayOpenKey = GlobalKey();
@@ -335,11 +329,8 @@ class NavigationViewState extends State<NavigationView> {
         _compactOverlayOpen,
         identifier: 'compactOverlayOpen',
       );
-      // FlyNarwhal patch: the open/compact pane branches use distinct keys,
-      // so toggling inflates a fresh AnimatedContainer instead of retaking
-      // the shared one — no width animation runs and its onEnd (which resets
-      // _isTransitioning) never fires. Pane items refuse taps while
-      // isTransitioning is true, so release the gate on the next frame.
+      // Distinct overlay keys inflate a fresh stack, so no width animation (or
+      // its onEnd) runs to reset _isTransitioning; release it on the next frame.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _animationEndCallback();
       });
@@ -991,7 +982,6 @@ class NavigationViewState extends State<NavigationView> {
                   child: _OpenNavigationPane(
                     theme: theme,
                     pane: pane,
-                    usePanelKey: false,
                     onItemSelected: () {
                       if (_displayMode == PaneDisplayMode.minimal) {
                         isMinimalPaneOpen = false;
