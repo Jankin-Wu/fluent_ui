@@ -1048,7 +1048,11 @@ class _CompactNavigationPane extends StatelessWidget {
         pane.autoSuggestBox != null && pane.autoSuggestBoxReplacement != null;
 
     return AnimatedContainer(
-      key: view._panelKey,
+      // FlyNarwhal patch: upstream shares this GlobalKey with the open pane
+      // to animate the width between compact/open. Retaking the keyed element
+      // across those positions during the body LayoutBuilder's in-layout
+      // rebuild recursively activates OverlayPortals and attaches to the
+      // overlay theater mid-layout -> assertion crash. Fresh inflate instead.
       duration: theme.animationDuration ?? Duration.zero,
       curve: theme.animationCurve ?? Curves.linear,
       width: pane.size?.compactWidth ?? kCompactNavigationPaneWidth,
@@ -1170,9 +1174,11 @@ class _OpenNavigationPaneState extends State<_OpenNavigationPane> {
     }
 
     return AnimatedContainer(
+      // FlyNarwhal patch: see the compact pane AnimatedContainer above —
+      // shared-key reuse across compact/open positions crashes mid-layout.
+      key: null,
       duration: theme.animationDuration ?? Duration.zero,
       curve: theme.animationCurve ?? Curves.linear,
-      key: widget.usePanelKey ? view._panelKey : null,
       width: paneWidth,
       onEnd: widget.onAnimationEnd,
       child: LayoutBuilder(

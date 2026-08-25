@@ -269,7 +269,19 @@ class NavigationViewState extends State<NavigationView> {
   final _secondaryListKey = GlobalKey();
   final _selectedItemKey = GlobalKey();
   final _contentKey = GlobalKey();
-  final _overlayKey = GlobalKey();
+  // FlyNarwhal patch: upstream reuses a single GlobalKey across the compact
+  // view's open/compact branches, the stack overlay branches and the minimal
+  // pane. Swapping between those positions while the body LayoutBuilder
+  // rebuilds its child during layout retakes the key'd element, recursively
+  // activates OverlayPortals and attaches render objects to the overlay
+  // theater mid-layout -> "_RenderLayoutBuilder was mutated" /
+  // "_elements.contains(element)" assertions and a ~100k-px RenderFlex
+  // overflow. One key per position keeps swaps deactivate+inflate instead.
+  final _columnOverlayOpenKey = GlobalKey();
+  final _columnOverlayCompactKey = GlobalKey();
+  final _stackOverlayOpenKey = GlobalKey();
+  final _stackOverlayCompactKey = GlobalKey();
+  final _minimalPaneKey = GlobalKey();
 
   bool _minimalPaneOpen = false;
 
@@ -787,7 +799,7 @@ class NavigationViewState extends State<NavigationView> {
                   child: () {
                     if (openedWithoutOverlay) {
                       return Mica(
-                        key: _overlayKey,
+                        key: _columnOverlayOpenKey,
                         backgroundColor: theme.backgroundColor,
                         child: Container(
                           margin: const EdgeInsetsDirectional.symmetric(
@@ -803,7 +815,7 @@ class NavigationViewState extends State<NavigationView> {
                       );
                     } else {
                       return KeyedSubtree(
-                        key: _overlayKey,
+                        key: _columnOverlayCompactKey,
                         child: _CompactNavigationPane(
                           pane: pane,
                           onOpenSearch: widget.onOpenSearch,
@@ -848,7 +860,7 @@ class NavigationViewState extends State<NavigationView> {
               if (_compactOverlayOpen) {
                 return ClipRect(
                   child: Mica(
-                    key: _overlayKey,
+                    key: _stackOverlayOpenKey,
                     backgroundColor: theme.overlayBackgroundColor,
                     elevation: 10,
                     child: Container(
@@ -874,7 +886,7 @@ class NavigationViewState extends State<NavigationView> {
                 );
               } else {
                 return Mica(
-                  key: _overlayKey,
+                  key: _stackOverlayCompactKey,
                   backgroundColor: theme.backgroundColor,
                   child: Padding(
                     padding: const EdgeInsetsDirectional.only(top: 38),
@@ -934,7 +946,7 @@ class NavigationViewState extends State<NavigationView> {
             ),
           ),
         AnimatedPositionedDirectional(
-          key: _overlayKey,
+          key: _minimalPaneKey,
           duration: theme.animationDuration ?? Duration.zero,
           curve: theme.animationCurve ?? Curves.linear,
           start: isMinimalPaneOpen ? 0.0 : -openSize,
