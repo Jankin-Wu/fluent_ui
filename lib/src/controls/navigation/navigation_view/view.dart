@@ -120,10 +120,21 @@ class NavigationView extends StatefulWidget {
     this.transitionBuilder,
     this.paneBodyBuilder,
     this.onDisplayModeChanged,
+    this.minimalReservedTopExtent = 38.0,
   }) : assert(
          (pane != null && content == null) || (pane == null && content != null),
          'Either pane or content must be provided',
        );
+
+  /// Height of the band reserved at the top of the view when the pane is in
+  /// [PaneDisplayMode.minimal] display mode. The drawer slides out from behind
+  /// this band, which is painted with the scaffold background so that a window
+  /// title bar drawn above the view covers it cleanly.
+  ///
+  /// Defaults to `38`, the height of a standard Windows title bar. Set it to
+  /// `0` when nothing overlaps the top of the view, so that the drawer's
+  /// rounded top corners stay visible.
+  final double minimalReservedTopExtent;
 
   final Widget? titleBar;
 
@@ -915,18 +926,20 @@ class NavigationViewState extends State<NavigationView> {
     final localizations = FluentLocalizations.of(context);
 
     final openSize = pane.size?.openPaneWidth ?? kOpenNavigationPaneWidth;
+    final reservedTop = widget.minimalReservedTopExtent;
 
     return Stack(
       children: [
+        if (reservedTop > 0)
+          PositionedDirectional(
+            top: 0,
+            start: 0,
+            end: 0,
+            height: reservedTop,
+            child: ColoredBox(color: fluentTheme.scaffoldBackgroundColor),
+          ),
         PositionedDirectional(
-          top: 0,
-          start: 0,
-          end: 0,
-          height: 38,
-          child: ColoredBox(color: fluentTheme.scaffoldBackgroundColor),
-        ),
-        PositionedDirectional(
-          top: 38,
+          top: reservedTop,
           start: 0,
           end: 0,
           bottom: 0,
@@ -978,7 +991,7 @@ class NavigationViewState extends State<NavigationView> {
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsetsDirectional.only(top: 38 + 6),
+                  padding: EdgeInsetsDirectional.only(top: reservedTop + 6),
                   child: _OpenNavigationPane(
                     theme: theme,
                     pane: pane,
